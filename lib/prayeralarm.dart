@@ -7,9 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PrayerTimePage extends StatefulWidget {
-  final String userId; // Add userId as a parameter
+  final String userId;
 
-  PrayerTimePage({required this.userId}); // Initialize with user ID
+  PrayerTimePage({required this.userId});
 
   @override
   _PrayerTimePageState createState() => _PrayerTimePageState();
@@ -85,7 +85,7 @@ class _PrayerTimePageState extends State<PrayerTimePage> {
       time.minute,
     );
 
-    // Check if the time is in the past; if so, schedule for the next day
+    // If the time is in the past, schedule it for the next day
     final scheduleTime = notificationTime.isBefore(now)
         ? notificationTime.add(Duration(days: 1))
         : notificationTime;
@@ -142,14 +142,14 @@ class _PrayerTimePageState extends State<PrayerTimePage> {
       appBar: AppBar(
         title: Text(
           'Set Prayer Times',
-          style: TextStyle(color: Colors.white), // Change title text color to white
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.black,
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
         ),
-        iconTheme: IconThemeData(color: Colors.white), // Change icon color to white
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: ListView.builder(
         itemCount: _prayers.length,

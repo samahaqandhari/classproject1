@@ -9,6 +9,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:label="classproject"
         android:name="${applicationName}"
@@ -57,7 +58,7 @@
             tools:ignore="MissingClass" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCJ8dDBpEHujWfRfA23ITGa9dYwnD5Uzzc"/>
+            android:value="AIzaSyCpQ8MVlJK2WS3IC5_0_fnRaz3EoB3Xf80"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

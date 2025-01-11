@@ -41,18 +41,33 @@ class _LocationPageState extends State<LocationPage> {
     }
   }
 
-  void _onSearch() {
-    // You can use Google Places API or any other method to get the Lat/Lng of the searched location.
-    // For simplicity, assume a fixed Lat/Lng for now
-    LatLng location = LatLng(37.7749, -122.4194); // Example: San Francisco
-    mapController?.animateCamera(CameraUpdate.newLatLng(location));
-    setState(() {
-      _markers.add(Marker(
-        markerId: MarkerId('searchedLocation'),
-        position: location,
-        infoWindow: InfoWindow(title: 'Searched Location'),
-      ));
-    });
+  // Perform search based on entered location name
+  void _onSearch() async {
+    String searchText = _searchController.text;
+    if (searchText.isNotEmpty) {
+      // Simulate searching for a location and getting the coordinates
+      // You can replace this with a real Google Places API call or another method
+      LatLng location = await _getCoordinatesFromSearch(searchText);
+
+      // Move the map camera to the new location
+      mapController?.animateCamera(CameraUpdate.newLatLng(location));
+
+      // Add marker for the searched location
+      setState(() {
+        _markers.add(Marker(
+          markerId: MarkerId('searchedLocation'),
+          position: location,
+          infoWindow: InfoWindow(title: 'Searched Location'),
+        ));
+      });
+    }
+  }
+
+  // Dummy function to simulate fetching coordinates for search
+  Future<LatLng> _getCoordinatesFromSearch(String searchText) async {
+    // For now, we just return a fixed location (San Francisco)
+    // You can integrate Google Places API to fetch real coordinates
+    return LatLng(37.7749, -122.4194); // San Francisco (example)
   }
 
   void _addToFavorites() {

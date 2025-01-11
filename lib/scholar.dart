@@ -113,7 +113,7 @@ class _ScholarPageState extends State<ScholarPage> {
           return MapEntry(
             index,
             DataRow(cells: [
-              DataCell(Text('${index + 1}')),  // User index, no pagination
+              DataCell(Text('${index + 1}')),  // Serial number, adjusted dynamically
               DataCell(Text(user['name'] ?? '')),  // User name
               DataCell(Text(user['email'] ?? '')),  // User email
               DataCell(Text(user['degree'] ?? '')),  // User degree
@@ -177,28 +177,6 @@ class _ScholarPageState extends State<ScholarPage> {
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            // Dropdown-like ListView for showing filtered users
-            if (_filteredUsers.isNotEmpty) ...[
-              Container(
-                color: Colors.white,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _filteredUsers.length,
-                  itemBuilder: (context, index) {
-                    final user = _filteredUsers[index];
-                    return ListTile(
-                      title: Text(user['name'] ?? ''),
-                      subtitle: Text(
-                          'Email: ${user['email'] ?? ''} | Degree: ${user['degree'] ?? ''} | Shift: ${user['shift'] ?? ''}'),
-                      onTap: () {
-                        // You can add any logic here when a user taps on the suggestion
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
             SizedBox(height: 16),
             // Data Table
             Expanded(
