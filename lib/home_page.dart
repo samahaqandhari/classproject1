@@ -5,8 +5,8 @@ import 'update_attendance_page.dart';
 import 'login_page.dart';
 import 'prayeralarm.dart';
 import 'location.dart';
-import 'scholar.dart'; // Import ScholarPage
 import 'search_scholar.dart'; // Import SearchScholarPage
+import 'scholar_detail_page.dart'; // Import the new ScholarDetailPage
 
 class HomePage extends StatefulWidget {
   @override
@@ -37,21 +37,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _navigateToProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfilePage(
-          name: _name,
-          email: _email,
-          phone: _phone,
-          degree: _degree,
-          shift: _shift,
-        ),
-      ),
-    );
-  }
-
   void _navigateToAttendancePage() {
     Navigator.push(
       context,
@@ -66,17 +51,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _navigateToScholarPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => ScholarPage()),
-    );
-  }
-
   void _navigateToSearchScholarPage() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => SearchScholarPage()),
+      MaterialPageRoute(
+        builder: (context) => SearchScholarPage(userEmail: _email), // Passing email to the SearchScholarPage
+      ),
+    );
+  }
+
+  void _navigateToScholarDetailPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ScholarDetailPage()),
     );
   }
 
@@ -161,23 +148,11 @@ class _HomePageState extends State<HomePage> {
         actions: [
           PopupMenuButton<String>( // Profile and logout options
             onSelected: (value) {
-              if (value == 'profile') {
-                _navigateToProfile();
-              } else if (value == 'logout') {
+              if (value == 'logout') {
                 _handleLogout();
               }
             },
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    Icon(Icons.account_circle, color: Colors.lightBlue),
-                    SizedBox(width: 8),
-                    Text('Profile'),
-                  ],
-                ),
-              ),
               PopupMenuItem(
                 value: 'logout',
                 child: Row(
@@ -246,7 +221,7 @@ class _HomePageState extends State<HomePage> {
                         'Scholars',
                         Icons.book,
                         Colors.purple[400]!,
-                        _navigateToScholarPage,
+                        _navigateToScholarDetailPage, // Navigate to ScholarDetailPage
                       ),
                       SizedBox(height: 16),
                       _buildModuleButton(
@@ -283,88 +258,6 @@ class _HomePageState extends State<HomePage> {
         padding: EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-}
-
-class ProfilePage extends StatelessWidget {
-  final String name;
-  final String email;
-  final String phone;
-  final String degree;
-  final String shift;
-
-  ProfilePage({
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.degree,
-    required this.shift,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile'),
-        backgroundColor: Colors.lightBlue[400],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 5,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ListTile(
-                  leading: Icon(Icons.person, color: Colors.lightBlue),
-                  title: Text('Name',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text(name),
-                ),
-                Divider(),
-                ListTile(
-                  leading: Icon(Icons.email, color: Colors.lightBlue),
-                  title: Text('Email',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text(email),
-                ),
-                Divider(),
-                ListTile(
-                  leading: Icon(Icons.phone, color: Colors.lightBlue),
-                  title: Text('Phone',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text(phone),
-                ),
-                Divider(),
-                ListTile(
-                  leading: Icon(Icons.school, color: Colors.lightBlue),
-                  title: Text('Degree',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text(degree),
-                ),
-                Divider(),
-                ListTile(
-                  leading: Icon(Icons.access_time, color: Colors.lightBlue),
-                  title: Text('Shift',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text(shift),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
