@@ -17,8 +17,8 @@ class _SignupPageState extends State<SignupPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  String? _selectedDegree;
-  String? _selectedShift;
+  String? _selectedDegree = 'BS IT'; // Initialize with a default value
+  String? _selectedShift = 'Morning'; // Initialize with a default value
   bool _isLaravelDeveloper = false;
   bool _isPasswordVisible = false;
   bool _isSubmitting = false;
@@ -221,6 +221,7 @@ class _SignupPageState extends State<SignupPage> {
                     _selectedDegree = value;
                   });
                 },
+                initialValue: _selectedDegree, // Pass initial value
               ),
               SizedBox(height: 10),
               _buildDropdownField(
@@ -232,6 +233,7 @@ class _SignupPageState extends State<SignupPage> {
                     _selectedShift = value;
                   });
                 },
+                initialValue: _selectedShift, // Pass initial value
               ),
               SizedBox(height: 10),
               Text(
@@ -302,7 +304,6 @@ class _SignupPageState extends State<SignupPage> {
                   String shift = _selectedShift ?? '';
 
                   _saveUserData(name, email, cellNo, degree, shift);
-
                   await _submitToAPI(
                     name: name,
                     email: email,
@@ -311,20 +312,11 @@ class _SignupPageState extends State<SignupPage> {
                     shift: shift,
                     degree: degree,
                   );
-
                   setState(() {
                     _isSubmitting = false;
                   });
                 }
               }),
-              SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-                child: Text('Already have an account? Login',
-                    style: TextStyle(color: Colors.lightBlue[400])),
-              ),
             ],
           ),
         ),
@@ -337,20 +329,22 @@ class _SignupPageState extends State<SignupPage> {
     required String label,
     required IconData icon,
     bool obscureText = false,
+    Widget? suffixIcon,
+    TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
-    Widget? suffixIcon,
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: obscureText,
-      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.lightBlue[400]),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         suffixIcon: suffixIcon,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       validator: validator,
     );
   }
@@ -358,31 +352,39 @@ class _SignupPageState extends State<SignupPage> {
   Widget _buildDropdownField({
     required String label,
     required List<String> items,
-    required void Function(String?) onChanged,
     String? Function(String?)? validator,
+    void Function(String?)? onChanged,
+    String? initialValue,
   }) {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(Icons.school, color: Colors.lightBlue[400]),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-      onChanged: onChanged,
+      value: initialValue ?? _selectedDegree,  // Use the initial value
+      items: items.map<DropdownMenuItem<String>>((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
       validator: validator,
+      onChanged: onChanged,
     );
   }
 
-  Widget _buildButton(String label, void Function() onPressed) {
+  Widget _buildButton(String text, VoidCallback onPressed) {
     return ElevatedButton(
-      onPressed: onPressed,
+      onPressed: _isSubmitting ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 50), backgroundColor: Colors.lightBlue[400],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        minimumSize: Size(double.infinity, 50), backgroundColor: Colors.lightBlue[400],
       ),
       child: _isSubmitting
           ? CircularProgressIndicator(color: Colors.white)
-          : Text(label, style: TextStyle(fontSize: 18)),
+          : Text(
+        text,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

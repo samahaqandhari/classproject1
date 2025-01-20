@@ -2,90 +2,105 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-class ScholarRequestsSentPage extends StatefulWidget {
+class RequestsPage extends StatefulWidget {
   @override
-  _ScholarRequestsSentPageState createState() =>
-      _ScholarRequestsSentPageState();
+  _RequestsPageState createState() => _RequestsPageState();
 }
 
-class _ScholarRequestsSentPageState extends State<ScholarRequestsSentPage> {
-  bool _isLoading = false;
+class _RequestsPageState extends State<RequestsPage> with SingleTickerProviderStateMixin {
+  bool _isLoading = true;
+  String _errorMessage = '';
+  String _userId = '';
+  late TabController _tabController;
+
   List<dynamic> _sentRequests = [];
+  List<dynamic> _receivedRequests = [];
 
-  Future<void> _fetchSentRequests() async {
-    setState(() {
-      _isLoading = true;
-      _sentRequests = [];
-    });
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadUserId();
+  }
 
+  Future<void> _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('id');
-
-    if (userId == null) {
+    setState(() {
+      _userId = prefs.getString('id') ?? '';
+    });
+    if (_userId.isNotEmpty) {
+      _fetchRequests();
+    } else {
       setState(() {
+        _errorMessage = 'User ID not found. Please log in again.';
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User ID not found. Please login again.')),
-      );
-      return;
     }
+  }
 
-    final url =
-    Uri.parse('https://devtechtop.com/store/public/api/scholar_request/all');
+  Future<void> _fetchRequests() async {
+    final url = Uri.parse('https://devtechtop.com/store/public/api/scholar_request/all');
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"user_id": userId}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'user_id': _userId}),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['status'] == "success") {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success' && data['data'] is List) {
           setState(() {
-            _sentRequests = data['data'] ?? [];
+            _sentRequests = data['data']
+                .where((request) => request['sender_id']?.toString() == _userId)
+                .toList();
+            _receivedRequests = data['data']
+                .where((request) => request['receiver_id']?.toString() == _userId)
+                .toList();
+            _isLoading = false;
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'No requests found.')),
-          );
+          setState(() {
+            _errorMessage = 'Unexpected response format.';
+            _isLoading = false;
+          });
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Server error: ${response.statusCode}')),
-        );
+        setState(() {
+          _errorMessage = 'Failed to load requests. Status code: ${response.statusCode}';
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
-      );
-    } finally {
       setState(() {
+        _errorMessage = 'An error occurred: $e';
         _isLoading = false;
       });
     }
   }
 
   Future<void> _cancelRequest(String requestId) async {
-    final url = Uri.parse(
-        'https://devtechtop.com/store/public/api/cancel/scholar_request');
+    final url = Uri.parse('https://devtechtop.com/store/public/api/cancel/scholar_request');
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"request_id": requestId}),
+        body: json.encode({'request_id': requestId}),
       );
 
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data['status'] == "success") {
+      final data = json.decode(response.body);
+      if (response.statusCode == 200 && data['status'] == 'success') {
+        setState(() {
+          // Remove the canceled request from the list
+          _sentRequests.removeWhere((request) => request['id'] == requestId);
+          _receivedRequests.removeWhere((request) => request['id'] == requestId);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Request cancelled successfully.')),
+          const SnackBar(content: Text('Request canceled successfully.')),
         );
-        _fetchSentRequests();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['message'] ?? 'Failed to cancel request.')),
@@ -98,162 +113,196 @@ class _ScholarRequestsSentPageState extends State<ScholarRequestsSentPage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchSentRequests();
+  Future<void> _acceptRequest(String requestId) async {
+    final url = Uri.parse('https://devtechtop.com/store/public/api/update/scholar_request');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'request_id': requestId}),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        if (data['status'] == 'error') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['request_id'] ?? 'Request ID is required.')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Request accepted successfully.')),
+          );
+          // Optionally, you can update the request status or remove it from the list.
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to accept the request. Status code: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    }
+  }
+
+  void _showRequestDetails(Map<String, dynamic> request) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Request Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Sender: ${request['sender_name'] ?? 'Unknown'}'),
+              Text('Receiver: ${request['reciever_name'] ?? 'Unknown'}'),
+              Text('Status: ${request['status'] ?? 'N/A'}'),
+              Text('Description: ${request['description'] ?? 'No description'}'),
+              Text('Entry Date & Time: ${request['entry_date_time'] ?? 'N/A'}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _cancelRequest(request['id']); // Call cancel request API here
+              },
+              child: const Text('Cancel Request'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Sent Scholar Requests',
-          style: GoogleFonts.lora(color: Colors.white, fontWeight: FontWeight.bold),
+        title: const Text('My Requests'),
+        backgroundColor: Colors.lightBlueAccent,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.send), text: 'Sent Requests'),
+            Tab(icon: Icon(Icons.inbox), text: 'Received Requests'),
+          ],
         ),
-        backgroundColor: Colors.lightBlue,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _sentRequests.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
           ? Center(
         child: Text(
-          'No requests sent.',
-          style: GoogleFonts.roboto(
-            fontSize: 18,
-            color: Colors.black,
-            fontWeight: FontWeight.w500,
-          ),
+          _errorMessage,
+          style: const TextStyle(color: Colors.red, fontSize: 16),
         ),
       )
-          : ListView.builder(
-        itemCount: _sentRequests.length,
-        itemBuilder: (context, index) {
-          final request = _sentRequests[index];
-          return Container(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.lightBlue[50],
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  request['reciever_name'] ?? 'Unknown',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  request['description'] ?? 'No description provided',
-                  style: GoogleFonts.roboto(
-                    fontSize: 14,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      request['entry_date_time'] ?? '',
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              backgroundColor: Colors.lightBlue[50],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              title: Text(
-                                'Confirm Deletion',
-                                style: GoogleFonts.lora(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              content: Text(
-                                'Are you sure you want to delete this request?',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 16,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop(false);
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.grey,
-                                  ),
-                                  child: Text(
-                                    'No',
-                                    style: GoogleFonts.roboto(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop(true);
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                  ),
-                                  child: Text(
-                                    'Yes',
-                                    style: GoogleFonts.roboto(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
+          : TabBarView(
+        controller: _tabController,
+        children: [
+          // Sent Requests Tab
+          Column(
+            children: [
+              Expanded(
+                child: _sentRequests.isEmpty
+                    ? const Center(child: Text('No sent requests found.'))
+                    : ListView.builder(
+                  itemCount: _sentRequests.length,
+                  itemBuilder: (context, index) {
+                    final request = _sentRequests[index];
+                    return Card(
+                      color: Colors.lightBlue.shade100,
+                      margin: const EdgeInsets.all(8),
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.send,
+                          color: Colors.blue,
+                        ),
+                        title: Text(request['reciever_name'] ?? 'Unknown'),
+                        subtitle: Text('Status: ${request['status'] ?? 'N/A'}'),
+                        trailing: TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            backgroundColor: Colors.blue,
+                          ),
+                          onPressed: () {
+                            _showRequestDetails(request);
                           },
-                        );
-
-                        if (confirm == true) {
-                          _cancelRequest(request['id']);
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.bold,
+                          child: const Text('Cancel', style: TextStyle(fontSize: 12)),
                         ),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+          // Received Requests Tab
+          Column(
+            children: [
+              Expanded(
+                child: _receivedRequests.isEmpty
+                    ? const Center(child: Text('No received requests found.'))
+                    : ListView.builder(
+                  itemCount: _receivedRequests.length,
+                  itemBuilder: (context, index) {
+                    final request = _receivedRequests[index];
+                    return Card(
+                      margin: const EdgeInsets.all(8),
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.inbox,
+                          color: Colors.green,
+                        ),
+                        title: Text(request['sender_name'] ?? 'Unknown'),
+                        subtitle: Text('Status: ${request['status'] ?? 'N/A'}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                backgroundColor: Colors.green,
+                              ),
+                              onPressed: () {
+                                _acceptRequest(request['id']); // Call the accept request API here
+                              },
+                              child: const Text('Accept', style: TextStyle(fontSize: 12)),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () {
+                                _showRequestDetails(request);
+                              },
+                              child: const Text('Cancel', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

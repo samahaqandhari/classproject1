@@ -15,7 +15,7 @@ class _ScholarDetailPageState extends State<ScholarDetailPage> {
   List<dynamic> _scholars = [];
   List<dynamic> _filteredScholars = [];
   String? _userId;
-  Map<String, String> _requestStatus = {}; // To track request status
+  Map<String, String> _requestStatus = {}; // Track request status
 
   @override
   void initState() {
@@ -54,7 +54,7 @@ class _ScholarDetailPageState extends State<ScholarDetailPage> {
         if (data['status'] == 'success') {
           setState(() {
             _scholars = data['data'];
-            _scholars.sort((a, b) => a['name'].compareTo(b['name'])); // Sort scholars by name in ascending order
+            _scholars.sort((a, b) => a['name'].compareTo(b['name'])); // Sort scholars by name
             _filteredScholars = _scholars;
             _isLoading = false;
           });
@@ -110,7 +110,6 @@ class _ScholarDetailPageState extends State<ScholarDetailPage> {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['status'] == 'success') {
         setState(() {
-          // Update request status to 'pending'
           _requestStatus[receiverId] = 'pending';
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -134,7 +133,7 @@ class _ScholarDetailPageState extends State<ScholarDetailPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.lightBlue[50], // Light blue color for the dialog background
+        backgroundColor: Colors.lightBlue[50],
         title: Text('Send Request'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -175,23 +174,21 @@ class _ScholarDetailPageState extends State<ScholarDetailPage> {
         title: Text('Scholar Details'),
         backgroundColor: Colors.blue,
         actions: [
-          // Navigate to Sent Requests page
           IconButton(
             icon: Icon(Icons.mail),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ScholarRequestsSentPage()),
+                MaterialPageRoute(builder: (context) => RequestsPage()),
               );
             },
           ),
-          // Navigate to Received Requests page
           IconButton(
             icon: Icon(Icons.inbox),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ReceivedRequestsPage()),
+                MaterialPageRoute(builder: (context) => AcceptedRequestsScreen()),
               );
             },
           ),
@@ -221,7 +218,7 @@ class _ScholarDetailPageState extends State<ScholarDetailPage> {
                 final scholar = _filteredScholars[index];
                 final isRequestSent = _requestStatus[scholar['id']] == 'pending';
                 return Card(
-                  color: Colors.lightBlue[50], // Light sky blue background
+                  color: Colors.lightBlue[50],
                   margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   elevation: 4,
                   shape: RoundedRectangleBorder(

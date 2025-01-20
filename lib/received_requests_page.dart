@@ -2,81 +2,73 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'chat_screen.dart';
 
-class ReceivedRequestsPage extends StatefulWidget {
+class AcceptedRequestsScreen extends StatefulWidget {
   @override
-  _ReceivedRequestsPageState createState() => _ReceivedRequestsPageState();
+  _AcceptedRequestsScreenState createState() => _AcceptedRequestsScreenState();
 }
 
-class _ReceivedRequestsPageState extends State<ReceivedRequestsPage> {
-  bool _isLoading = true;
-  List<dynamic> _receivedRequests = [];
-  String? _userName; // To store your logged-in user name
+class _AcceptedRequestsScreenState extends State<AcceptedRequestsScreen> {
+  List<dynamic> acceptedRequests = [];
+  bool isLoading = true;
+  String errorMessage = '';
+  String userId = '';
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    _fetchReceivedRequests();
+    _loadUserId();
   }
 
-  Future<void> _loadUserData() async {
-    // Load user data from SharedPreferences
+  Future<void> _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userName = prefs.getString('user_name');
+      userId = prefs.getString('id') ?? '';
     });
+    if (userId.isNotEmpty) {
+      fetchAcceptedRequests();
+    } else {
+      setState(() {
+        errorMessage = 'User ID not found. Please log in again.';
+        isLoading = false;
+      });
+    }
   }
 
-  Future<void> _fetchReceivedRequests() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('user_id');
+  Future<void> fetchAcceptedRequests() async {
+    final String apiUrl = 'https://devtechtop.com/store/public/api/accepted/scholar_request';
 
-    if (userId == null) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User ID not found. Please log in again.')),
-      );
-      return;
-    }
-
-    final url = Uri.parse('https://devtechtop.com/store/public/api/scholar_request/all');
     try {
       final response = await http.post(
-        url,
+        Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId}),
+        body: json.encode({'user_id': userId}),
       );
-
-      print('Request sent with user_id: $userId');
-      print('Response: ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] == 'success') {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success' && data['data'] is List) {
           setState(() {
-            _receivedRequests = data['data'];
-            _isLoading = false;
+            acceptedRequests = data['data'];
+            isLoading = false;
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Failed to load data.')),
-          );
+          setState(() {
+            errorMessage = 'Unexpected response format.';
+            isLoading = false;
+          });
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Server error: ${response.statusCode}')),
-        );
+        setState(() {
+          errorMessage = 'Failed to load accepted requests. Status code: ${response.statusCode}';
+          isLoading = false;
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
-      );
-    } finally {
       setState(() {
-        _isLoading = false;
+        errorMessage = 'An error occurred: $e';
+        isLoading = false;
       });
     }
   }
@@ -85,48 +77,44 @@ class _ReceivedRequestsPageState extends State<ReceivedRequestsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Received Requests'),
-        backgroundColor: Colors.lightBlueAccent, // Sky Blue
+        title: const Text('Accepted Requests'),
+        backgroundColor: Colors.lightBlueAccent,
       ),
-      body: Column(
-        children: [
-          // Display the logged-in user's name
-          if (_userName != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'Logged in as: $_userName',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : errorMessage.isNotEmpty
+          ? Center(child: Text(errorMessage, style: const TextStyle(color: Colors.red, fontSize: 16)))
+          : acceptedRequests.isEmpty
+          ? const Center(child: Text('No accepted requests found.'))
+          : ListView.builder(
+        itemCount: acceptedRequests.length,
+        itemBuilder: (context, index) {
+          final request = acceptedRequests[index];
+          return Card(
+            margin: const EdgeInsets.all(8),
+            child: ListTile(
+              leading: const Icon(Icons.check_circle, color: Colors.green),
+              title: Text(request['sender_name'] ?? 'Unknown'),
+              subtitle: Text('Status: ${request['status'] ?? 'N/A'}'),
+              trailing: IconButton(
+                icon: const Icon(Icons.chat, color: Colors.blue),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatScreen(
+                        senderName: request['sender_name'] ?? 'Unknown',
+                        senderId: request['sender_id'] ?? '',
+                        receiverName: request['receiver_name'] ?? 'Unknown',
+                        receiverId: request['receiver_id'] ?? '',
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _receivedRequests.isEmpty
-                ? Center(child: Text('No requests found.'))
-                : ListView.builder(
-              itemCount: _receivedRequests.length,
-              itemBuilder: (context, index) {
-                final request = _receivedRequests[index];
-                return Card(
-                  margin: EdgeInsets.all(8.0),
-                  elevation: 5,
-                  child: ListTile(
-                    title: Text(request['reciever_name']),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Description: ${request['description']}'),
-                        Text('Sent at: ${request['created_at']}'),
-                      ],
-                    ),
-                    isThreeLine: true,
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
